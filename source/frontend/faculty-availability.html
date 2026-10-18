@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Availability — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>My Availability</h2>
+        <p>Click a period to mark it unavailable (shown with red stripes) and click again to undo. The scheduler and manual booking never place you in an unavailable period.</p>
+      </div>
+
+      <div id="msg"></div>
+      <div class="card card-pad"><div id="grid"></div>
+        <div class="muted small" style="margin-top:10px">Your existing classes stay where they are; if you block a period that already has a class, ask the administrator for a substitution.</div></div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script src="js/timetable-grid.js?v=5"></script>
+  <script>
+const user = requireRole("faculty");
+if (user) {
+  renderSidebar(user, "availability");
+  (async () => {
+    const list = await Api.get("/faculty");
+    const me = list.find((f) => f.name === user.name);
+    if (!me) { $("#msg").innerHTML = '<div class="banner warn">Your login name does not match any faculty record.</div>'; return; }
+    const [slots, entries, off] = await Promise.all([Api.get("/timeslots"), Api.get("/timetable?facultyId=" + me.id), Api.get("/availability?facultyId=" + me.id)]);
+    const offSet = new Set(off.map((o) => o.timeslotId));
+    function draw() {
+      renderTimetableGrid($("#grid"), slots, entries, {
+        showSection: true, off: offSet,
+        onCellClick: async (slot) => {
+          const now = !offSet.has(slot.id);
+          try {
+            const r = await Api.post("/availability", { facultyId: me.id, timeslotId: slot.id, unavailable: now });
+            if (now) offSet.add(slot.id); else offSet.delete(slot.id);
+            $("#msg").innerHTML = r.warning ? '<div class="banner warn">' + esc(r.warning) + "</div>" : "";
+            toast(now ? "Marked unavailable." : "Marked available again.", "ok");
+            draw();
+          } catch (e) { toast(e.message, "err"); }
+        },
+      });
+    }
+    draw();
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>
