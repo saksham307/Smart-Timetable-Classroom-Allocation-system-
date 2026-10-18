@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Timetable — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>My Timetable</h2>
+        <p>Your classes across every section. Practicals show all assigned teachers; a gold flag marks classes that someone else will cover on an upcoming date.</p>
+      </div>
+
+      <div id="warn"></div>
+      <div class="stat-grid" id="stats"></div>
+      <div class="card card-pad"><div id="legend"></div><div id="grid"></div></div>
+      <div class="grid-2" style="margin-top:18px">
+        <div class="card"><div class="card-head"><h3>Classes you will cover</h3></div><div class="card-pad" id="cover"></div></div>
+        <div class="card"><div class="card-head"><h3>Your classes someone else covers</h3></div><div class="card-pad" id="covered"></div></div>
+      </div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script src="js/timetable-grid.js?v=5"></script>
+  <script>
+const user = requireRole("faculty");
+if (user) {
+  renderSidebar(user, "timetable");
+  $("#legend").innerHTML = gridLegend();
+  (async () => {
+    const facultyList = await Api.get("/faculty");
+    const me = facultyList.find((f) => f.name === user.name);
+    if (!me) { $("#warn").innerHTML = '<div class="banner warn">Your login name does not match any faculty record, so no classes can be shown. Ask the administrator to add you under Faculty with exactly the same name.</div>'; return; }
+    const today = new Date().toISOString().slice(0, 10);
+    const [slots, entries, subs] = await Promise.all([Api.get("/timeslots"), Api.get("/timetable?facultyId=" + me.id), Api.get("/substitutions?facultyId=" + me.id + "&from=" + today)]);
+    const sections = new Set(entries.map((e) => e.section));
+    const labs = new Set(entries.filter((e) => e.isLab).map((e) => e.groupId));
+    $("#stats").innerHTML = [["Periods per week", entries.length], ["Sections taught", sections.size], ["Practical sessions", labs.size], ["Upcoming substitutions", subs.length]]
+      .map(([l, v]) => '<div class="card stat-card"><div class="num">' + v + '</div><div class="label">' + l + "</div></div>").join("");
+    const flags = {};
+    subs.filter((s) => s.originalFacultyId === me.id).forEach((s) => {
+      entries.filter((e) => e.slot.day && e.subject === s.subject && e.section === s.section && e.slot.time === s.startTime + "-" + s.endTime)
+        .forEach((e) => { flags[e.id] = "Covered on " + s.subDate.slice(5) + " by " + s.substitute; });
+    });
+    if (!entries.length) $("#grid").innerHTML = '<div class="empty">No classes assigned yet. They appear here once the administrator generates the timetable.</div>';
+    else renderTimetableGrid($("#grid"), slots, entries, { showSection: true, flags });
+    const row = (s) => '<div class="notice change"><div class="notice-title">' + esc(s.subject) + " &middot; " + esc(s.section) + '</div><div class="notice-body">' + esc(fmtDate(s.subDate)) + ", " + esc(s.startTime + "–" + s.endTime) + ", " + esc(s.room) + "</div></div>";
+    const cover = subs.filter((s) => s.substituteFacultyId === me.id), covered = subs.filter((s) => s.originalFacultyId === me.id);
+    $("#cover").innerHTML = cover.length ? cover.map(row).join("") : '<div class="empty">Nothing to cover.</div>';
+    $("#covered").innerHTML = covered.length ? covered.map((s) => row(s).replace("</div></div>", "</div><div class='notice-foot'>Taken by " + esc(s.substitute) + "</div></div>")).join("") : '<div class="empty">None.</div>';
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>
