@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Exam Schedule — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Exam Schedule</h2>
+        <p>Exam dates, times and halls. Students also see exactly which hall and seat numbers their section has.</p>
+      </div>
+
+      <div class="card toolbar-card" id="pick">
+        <div class="field"><label>Course</label><select id="course"></select></div>
+        <div class="field"><label>Year</label><select id="year"><option value="2">Year 2</option><option value="3">Year 3</option></select></div>
+      </div>
+      <div id="info" style="margin-top:14px"></div>
+      <div class="card" style="margin-top:6px"><div class="table-wrap" id="list"></div></div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script>
+const user = requireRole("any");
+if (user) {
+  renderSidebar(user, "exams");
+  (async () => {
+    const sections = await Api.get("/sections");
+    let courseId = null, year = null, sectionId = null;
+    if (user.role === "student") {
+      const mine = sections.find((s) => s.id === user.sectionId);
+      if (!mine) { $("#info").innerHTML = '<div class="banner warn">Your account is not linked to a section yet.</div>'; $("#pick").classList.add("hidden"); return; }
+      courseId = mine.courseId; year = mine.year; sectionId = mine.id;
+      $("#pick").classList.add("hidden");
+      $("#info").innerHTML = '<div class="banner info"><b>' + esc(mine.name) + "</b> &middot; " + esc(mine.courseName) + " &middot; Year " + mine.year + "</div>";
+    } else {
+      fillSelect($("#course"), await Api.get("/courses"), (c) => c.id, (c) => c.name);
+    }
+    let seq = 0;
+    async function load() {
+      const my = ++seq;
+      const c = courseId || $("#course").value, y = year || $("#year").value;
+      const rows = await Api.get("/exams?courseId=" + c + "&year=" + y + (sectionId ? "&sectionId=" + sectionId : ""));
+      if (my !== seq) return;      // a newer selection already replaced this request
+      $("#list").innerHTML = rows.length ? '<table class="data-table"><thead><tr><th>Date</th><th>Time</th><th>Subject</th><th>Type</th><th>' + (sectionId ? "Your hall &amp; seats" : "Halls") + "</th></tr></thead><tbody>" +
+        rows.map((r) => "<tr><td><b>" + esc(fmtDate(r.examDate)) + "</b></td><td>" + esc(r.startTime + "–" + r.endTime) + "</td><td>" + esc(r.subject) + "</td><td>" + labBadge(r.isLab) + "</td><td>" +
+          (r.halls.length ? r.halls.map(esc).join("<br>") : "—") + "</td></tr>").join("") + "</tbody></table>" : '<div class="empty">No exams have been scheduled yet for this course and year.</div>';
+    }
+    $("#course").addEventListener("change", load); $("#year").addEventListener("change", load);
+    load();
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>

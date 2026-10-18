@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Analytics — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Analytics Dashboard</h2>
+        <p>How well the rooms, teachers and days are being used, how complete every timetable is, and how many clashing bookings were refused.</p>
+      </div>
+
+      <div class="stat-grid" id="stats"></div>
+      <div class="grid-2">
+        <div class="card"><div class="card-head"><h3>Room utilisation</h3><span class="muted small right">booked / teaching periods per week</span></div><div class="bars" id="rooms"></div></div>
+        <div class="card"><div class="card-head"><h3>Teaching load</h3><span class="muted small right">periods per week</span></div><div class="bars" id="faculty"></div></div>
+      </div>
+      <div class="grid-2" style="margin-top:18px">
+        <div class="card"><div class="card-head"><h3>Classes per day</h3></div><div class="bars" id="days"></div></div>
+        <div class="card"><div class="card-head"><h3>Timetable completeness</h3><span class="muted small right">placed / required periods</span></div><div class="bars" id="sections"></div></div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-head"><h3>Clashes that were refused</h3><span class="muted small right">every refused booking is logged</span></div>
+        <div class="card-pad"><div class="stat-grid" id="engine" style="margin-bottom:14px"></div><div id="conf"></div></div>
+      </div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "analytics");
+  (async () => {
+    const a = await Api.get("/analytics");
+    const t = a.totals, tp = a.teachingPeriodsPerWeek;
+    $("#stats").innerHTML = [["Classes scheduled", t.entries], ["Teaching periods / week", tp], ["Sections", t.sections], ["Faculty", t.faculty], ["Exams scheduled", t.exams], ["Substitutions", t.substitutions]]
+      .map(([l, v]) => '<div class="card stat-card"><div class="num">' + v + '</div><div class="label">' + l + "</div></div>").join("");
+    $("#rooms").innerHTML = barRows(a.rooms.map((r) => ({ name: r.name + " (" + r.type + ")", booked: r.booked })), "name", "booked", tp, "brass",
+      (r) => r.booked + "/" + tp + " · " + Math.round(r.booked * 100 / tp) + "%");
+    $("#faculty").innerHTML = barRows(a.faculty.filter((f) => f.periods > 0), "name", "periods", null, "", (r) => r.periods + " periods") || '<div class="empty">No classes yet.</div>';
+    $("#days").innerHTML = a.days.length ? barRows(a.days, "day", "n", null, "moss", (r) => r.n + " classes") : '<div class="empty">No classes yet.</div>';
+    $("#sections").innerHTML = a.sections.map((s) => {
+      const pct = s.required ? Math.min(100, s.placed * 100 / s.required) : 0;
+      return '<div class="bar-row" style="grid-template-columns:150px 1fr 74px"><div class="bar-label">' + esc(s.name) + '</div><div class="bar-track"><div class="bar-fill ' + (pct >= 100 ? "moss" : "rust") +
+        '" style="width:' + pct + '%"></div></div><div class="bar-val">' + s.placed + " / " + s.required + "</div></div>";
+    }).join("");
+    const e = a.engine;
+    $("#engine").innerHTML = [["Bookings granted", e.bookingsGranted], ["Bookings refused (clashes)", e.bookingsDenied]]
+      .map(([l, v]) => '<div class="card stat-card"><div class="num">' + v + '</div><div class="label">' + l + "</div></div>").join("");
+    $("#conf").innerHTML = a.recentConflicts.length ? '<table class="data-table"><thead><tr><th>Type</th><th>What was refused</th><th>When</th></tr></thead><tbody>' +
+      a.recentConflicts.map((c) => '<tr><td><span class="badge badge-err">' + esc(c.kind) + "</span></td><td>" + esc(c.message) + "</td><td>" + fmtDateTime(c.createdAt) + "</td></tr>").join("") + "</tbody></table>"
+      : '<div class="empty">No conflicts have been refused yet. Try a clashing booking on the Manual Booking page.</div>';
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>

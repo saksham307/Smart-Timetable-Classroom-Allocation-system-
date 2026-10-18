@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Exams & Seating — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Exam Timetable & Seating</h2>
+        <p>One exam per day for a course and year (no clashes for any student), weekends skipped. Seating mixes the sections so neighbouring students never share a section, and a hall hosts only one exam at a time.</p>
+      </div>
+
+      <div class="card toolbar-card">
+        <div class="field"><label>Course</label><select id="course"></select></div>
+        <div class="field"><label>Year</label><select id="year"><option value="2">Year 2</option><option value="3">Year 3</option></select></div>
+        <div class="field"><label>First exam date</label><input type="date" id="start" /></div>
+        <button class="btn-accent" id="gen">Generate exam timetable &amp; seating</button>
+        <button class="btn-danger" id="clear">Clear</button>
+      </div>
+      <div id="msg" style="margin-top:14px"></div>
+      <div class="card" style="margin-top:6px">
+        <div class="card-head"><h3>Exam timetable</h3></div>
+        <div class="table-wrap" id="list"></div>
+      </div>
+      <div class="card hidden" id="seatCard" style="margin-top:18px">
+        <div class="card-head"><h3 id="seatTitle">Seating</h3><span class="muted small right">colour = section &middot; seat number above the roll number</span></div>
+        <div class="card-pad" id="seats"></div>
+      </div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "exams");
+  const $c = $("#course"), $y = $("#year");
+  function defaultStart() {
+    const d = new Date(); d.setDate(d.getDate() + 14);
+    while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  $("#start").value = defaultStart();
+
+  let seq = 0;
+  async function load() {
+    $("#seatCard").classList.add("hidden");
+    if (!$c.value) return;
+    const my = ++seq;
+    const rows = await Api.get("/exams?courseId=" + $c.value + "&year=" + $y.value);
+    if (my !== seq) return;
+    $("#list").innerHTML = rows.length ? '<table class="data-table"><thead><tr><th>Date</th><th>Time</th><th>Subject</th><th>Type</th><th>Students seated</th><th>Halls</th><th></th></tr></thead><tbody>' +
+      rows.map((r) => "<tr><td><b>" + esc(fmtDate(r.examDate)) + "</b></td><td>" + esc(r.startTime + "–" + r.endTime) + "</td><td>" + esc(r.subject) + "</td><td>" + labBadge(r.isLab) + "</td><td>" + r.seats +
+        "</td><td>" + (r.halls.length ? esc(Array.from(new Set(r.halls.map((h) => h.split(" (")[0]))).join(", ")) : "—") + '</td><td class="actions"><button class="btn-ghost btn-sm" data-seat="' + r.id + '" data-name="' + esc(r.subject) + '">View seating</button></td></tr>').join("") +
+      "</tbody></table>" : '<div class="empty">No exams scheduled for this course and year yet.</div>';
+    $$("#list [data-seat]").forEach((b) => b.addEventListener("click", () => showSeats(b.dataset.seat, b.dataset.name)));
+  }
+
+  async function showSeats(id, name) {
+    const halls = await Api.get("/exams/seating?examId=" + id);
+    const classes = ["sa", "sb", "sc", "sd"]; const map = {};
+    $("#seatTitle").textContent = "Seating — " + name;
+    $("#seats").innerHTML = halls.map((h) =>
+      '<div class="hall"><h4>' + esc(h.room) + ' <span class="muted small">· ' + h.seats.length + " of " + h.capacity + " seats used</span></h4><div class=\"seat-grid\">" +
+      h.seats.map((s) => { if (!(s.section in map)) map[s.section] = classes[Object.keys(map).length % classes.length];
+        return '<div class="seat ' + map[s.section] + '"><b>Seat ' + s.seatNo + "</b>" + esc(s.rollNo) + "</div>"; }).join("") + "</div></div>").join("") || '<div class="empty">No seats allocated.</div>';
+    $("#seatCard").classList.remove("hidden");
+    $("#seatCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  $("#gen").addEventListener("click", async () => {
+    $("#msg").innerHTML = "";
+    if (!$c.value || !$("#start").value) return toast("Choose a course and a start date.", "err");
+    if (!confirm("This replaces any existing exam schedule for this course and year. Continue?")) return;
+    $("#gen").disabled = true;
+    try {
+      const res = await Api.post("/exams/generate", { courseId: +$c.value, year: +$y.value, startDate: $("#start").value });
+      $("#msg").innerHTML = '<div class="banner ' + (res.unseated ? "warn" : "ok") + '">' + esc(res.message) + "</div>";
+      load();
+    } catch (e) { $("#msg").innerHTML = '<div class="banner err">' + esc(e.message) + "</div>"; }
+    finally { $("#gen").disabled = false; }
+  });
+  $("#clear").addEventListener("click", async () => {
+    if (!$c.value || !confirm("Remove the exam schedule for this course and year?")) return;
+    try { await Api.del("/exams?courseId=" + $c.value + "&year=" + $y.value); toast("Exam schedule cleared.", "ok"); load(); } catch (e) { toast(e.message, "err"); }
+  });
+  $c.addEventListener("change", load); $y.addEventListener("change", load);
+
+  (async () => {
+    fillSelect($c, await Api.get("/courses"), (c) => c.id, (c) => c.name);
+    load();
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>

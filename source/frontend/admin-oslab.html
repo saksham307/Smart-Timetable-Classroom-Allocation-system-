@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OS Lab — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>OS Lab — Banker's Algorithm & Deadlocks</h2>
+        <p>The operating-system ideas from the proposal, running on real timetable data: deadlock avoidance with Banker's algorithm, deadlock detection on a wait-for graph, and mutual exclusion.</p>
+      </div>
+
+      <div class="banner info"><b>Developer / evaluation page.</b> This is not part of the day-to-day administrator workflow. It exists to demonstrate and test the operating-system and database techniques that run silently inside the system.</div>
+      <div class="tabs">
+        <button class="tab active" data-tab="bankers">Banker's Algorithm</button>
+        <button class="tab" data-tab="deadlock">Deadlock detection</button>
+        <button class="tab" data-tab="map">Where each concept runs</button>
+      </div>
+
+      <div id="tab-bankers" class="stack">
+        <div class="card">
+          <div class="card-head"><h3>Banker's calculator</h3><span class="muted small right">edit the matrices (one row per line, numbers separated by spaces)</span></div>
+          <div class="card-pad">
+            <div class="grid-3">
+              <div class="field"><label>Available (1 row)</label><textarea class="matrix-input" id="av" style="min-height:48px"></textarea></div>
+              <div class="field"><label>Max (one row per process)</label><textarea class="matrix-input" id="mx"></textarea></div>
+              <div class="field"><label>Allocation (one row per process)</label><textarea class="matrix-input" id="al"></textarea></div>
+            </div>
+            <div class="toolbar" style="margin:14px 0 0">
+              <label class="small"><input type="checkbox" id="rel" checked /> Finished processes release their resources (textbook semantics)</label>
+              <div class="field" style="min-width:90px"><label>Request: process</label><input id="rp" type="number" min="0" value="1" style="width:90px" /></div>
+              <div class="field"><label>Request vector</label><input id="rv" value="1 0 2" /></div>
+              <button class="btn-primary" id="safety">Run safety check</button>
+              <button class="btn-accent" id="request">Check request</button>
+              <button class="btn-ghost" id="ex1">Textbook example</button>
+              <button class="btn-ghost" id="ex2">Example that turns unsafe</button>
+            </div>
+            <div id="bout" style="margin-top:16px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Banker's inside the timetable engine</h3></div>
+          <div class="card-pad">
+            <p class="muted" style="margin-top:0;line-height:1.6">Booked rooms and teacher-periods are never handed back during a planning cycle, so the engine runs the algorithm with <b>release = off</b>: a process "finishes" by <i>consuming</i> its remaining Need. Two checks use it:
+            <b>(1)</b> a whole-batch <i>pre-check</i> — sections are the processes, and rooms plus each teacher's free periods are the resource types; and <b>(2)</b> a per-session gate — a practical needs a room and <i>all</i> its teachers for two periods, so each period is granted only if the state stays safe.
+            Press the button to plan every section as a <b>dry run</b> (nothing is saved) and read the engine's log.</p>
+            <button class="btn-accent" id="dry">Dry-run all sections</button>
+            <div id="dryOut" style="margin-top:14px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-deadlock" class="stack hidden">
+        <div class="card">
+          <div class="card-head"><h3>Wait-for graph &amp; deadlock detection</h3>
+            <span class="right" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn-ghost" id="demo">Create demo deadlock</button>
+              <button class="btn-primary" id="analyze">Analyse now</button>
+              <button class="btn-accent" id="resolve">Resolve deadlock</button>
+            </span></div>
+          <div class="card-pad">
+            <p class="muted" style="margin-top:0;line-height:1.6">A re-allocation request that targets a room/period held by another class has to <b>wait</b>. Waiting requests form a graph (A &rarr; B means "A waits for B"). A <b>cycle</b> means nobody can ever move on their own — a deadlock — and it is detected (Tarjan's strongly-connected components) and reported instead of failing silently. Recovery breaks "hold and wait" by applying every move of the cycle <b>atomically</b> in one transaction.</p>
+            <div id="status"></div><div id="cycles"></div><div id="waiting"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Request a class move</h3><span class="muted small right">lecture classes only</span></div>
+          <div class="toolbar-card">
+            <div class="field"><label>Course</label><select id="mc"></select></div>
+            <div class="field"><label>Year</label><select id="my"><option value="2">Year 2</option><option value="3">Year 3</option></select></div>
+            <div class="field"><label>Section</label><select id="ms"></select></div>
+            <div class="field" style="min-width:280px"><label>Class to move</label><select id="me"></select></div>
+            <div class="field"><label>Target room</label><select id="mr"></select></div>
+            <div class="field"><label>Target period</label><select id="mp"></select></div>
+            <button class="btn-primary" id="submitMove">Submit request</button>
+          </div>
+        </div>
+        <div class="card"><div class="card-head"><h3>Recent move requests</h3></div><div class="table-wrap" id="hist"></div></div>
+      </div>
+
+      <div id="tab-map" class="hidden">
+        <div class="card">
+          <div class="card-head"><h3>Concepts used in this project and where to see them</h3></div>
+          <div class="table-wrap"><table class="data-table concept-table"><thead><tr><th>Concept</th><th>Kind</th><th>Where it runs</th><th>How to see it</th></tr></thead><tbody>
+            <tr><td>Mutual exclusion</td><td><span class="badge badge-info">OS</span></td><td>One lock around every generate / book / remove / move (critical section)</td><td>System Tests &rarr; "8 admins book the same room"</td></tr>
+            <tr><td>Race condition</td><td><span class="badge badge-info">OS</span></td><td>Check-then-insert without the lock</td><td>System Tests &rarr; "Same race WITHOUT the lock"</td></tr>
+            <tr><td>Priority scheduling</td><td><span class="badge badge-info">OS</span></td><td>Practicals are allocated before lectures</td><td>This page &rarr; Banker's tab &rarr; Dry-run all sections (log, PHASE 1)</td></tr>
+            <tr><td>Banker's algorithm (avoidance)</td><td><span class="badge badge-info">OS</span></td><td>Batch pre-check + per-lab-session gate</td><td>This page, tab 1; Engine log lines "Banker's"</td></tr>
+            <tr><td>Resource-allocation / wait-for graph</td><td><span class="badge badge-info">OS</span></td><td>Move requests &harr; held room / teacher / section cells</td><td>This page, tab 2</td></tr>
+            <tr><td>Deadlock detection &amp; recovery</td><td><span class="badge badge-info">OS</span></td><td>Cycle detection, then atomic multi-move</td><td>This page, tab 2 &rarr; Create demo deadlock &rarr; Resolve. In daily use it runs silently: Manual Booking &rarr; Move a class</td></tr>
+            <tr><td>Transactions (commit / rollback)</td><td><span class="badge badge-ok">DBMS</span></td><td>Every write is one all-or-nothing transaction</td><td>Generate a batch; a failure leaves the old timetable untouched</td></tr>
+            <tr><td>UNIQUE constraints</td><td><span class="badge badge-ok">DBMS</span></td><td>(room, period), (teacher, period), (section, period) in MySQL itself</td><td>System Tests &rarr; constraint safety net</td></tr>
+            <tr><td>Referential integrity</td><td><span class="badge badge-ok">DBMS</span></td><td>Foreign keys: cascade for bookings, restrict for teacher&ndash;subject</td><td>Try removing a teacher who still teaches a subject</td></tr>
+            <tr><td>Authentication &amp; authorisation</td><td><span class="badge badge-ok">DBMS</span> / web</td><td>Server session + filter: only admins may change data</td><td>Sign in as a student and try an admin page</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "oslab");
+  $$(".tab").forEach((t) => t.addEventListener("click", () => {
+    $$(".tab").forEach((x) => x.classList.toggle("active", x === t));
+    ["bankers", "deadlock", "map"].forEach((n) => $("#tab-" + n).classList.toggle("hidden", n !== t.dataset.tab));
+    if (t.dataset.tab === "deadlock") refresh();
+  }));
+
+  // =============================================================== Banker's
+  const MAX = "7 5 3\n3 2 2\n9 0 2\n2 2 2\n4 3 3";
+  const EXAMPLES = {
+    ex1: { av: "3 3 2", mx: MAX, al: "0 1 0\n2 0 0\n3 0 2\n2 1 1\n0 0 2", rp: 1, rv: "1 0 2" },
+    ex2: { av: "2 1 0", mx: MAX, al: "0 3 0\n3 0 2\n3 0 2\n2 1 1\n0 0 2", rp: 4, rv: "0 0 1" },
+  };
+  function load(ex) { const e = EXAMPLES[ex]; $("#av").value = e.av; $("#mx").value = e.mx; $("#al").value = e.al; $("#rp").value = e.rp; $("#rv").value = e.rv; $("#bout").innerHTML = ""; }
+  $("#ex1").addEventListener("click", () => load("ex1"));
+  $("#ex2").addEventListener("click", () => load("ex2"));
+  load("ex1");
+
+  const rows = (t) => t.trim().split(/\n+/).map((l) => l.trim().split(/[\s,]+/).filter(Boolean).map(Number));
+  const bad = (m) => m.some((r) => r.some((x) => isNaN(x)));
+  function table(title, m) {
+    return "<div><b class='small'>" + title + '</b><table class="matrix"><tr><th></th>' + m[0].map((_, j) => "<th>R" + j + "</th>").join("") + "</tr>" +
+      m.map((r, i) => "<tr><th>P" + i + "</th>" + r.map((x) => "<td>" + x + "</td>").join("") + "</tr>").join("") + "</table></div>";
+  }
+  function verdict(s) {
+    return '<div class="chips" style="margin:10px 0"><span class="badge ' + (s.safe ? "badge-ok" : "badge-err") + '">' + (s.safe ? "SAFE STATE" : "UNSAFE STATE") + "</span>" +
+      (s.safe ? "<span class='small muted'>safe sequence:</span>" + s.sequence.map((p, i) => (i ? '<span class="chip arrow">&rarr;</span>' : "") + '<span class="chip">' + p + "</span>").join("") : "") + "</div>" +
+      '<ol class="small muted" style="line-height:1.7;margin:6px 0 0 18px">' + s.steps.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ol>";
+  }
+  async function bankers(withRequest) {
+    const out = $("#bout");
+    try {
+      const av = rows($("#av").value)[0], mx = rows($("#mx").value), al = rows($("#al").value);
+      if (bad([av]) || bad(mx) || bad(al)) throw new Error("Matrices may only contain numbers.");
+      const body = { available: av, max: mx, allocation: al, release: $("#rel").checked };
+      if (withRequest) body.request = { process: Number($("#rp").value), vector: rows($("#rv").value)[0] };
+      const r = await Api.post("/os/bankers", body);
+      let h = '<div style="display:flex;gap:28px;flex-wrap:wrap">' + table("Need = Max − Allocation", r.need) + "</div>" + verdict(r.safety);
+      if (r.request) {
+        h += '<div class="banner ' + (r.request.granted ? "ok" : "err") + '" style="margin-top:14px"><b>Request by P' + body.request.process + " [" + body.request.vector.join(", ") + "]: " +
+          (r.request.granted ? "GRANTED" : "DENIED") + ".</b> " + esc(r.request.reason) + (r.request.granted ? "<br>Available after: [" + r.availableAfter.join(", ") + "]" : "") + "</div>";
+        if (r.request.safety && !r.request.granted) h += "<b class='small'>State if it were granted:</b>" + verdict(r.request.safety);
+      }
+      out.innerHTML = h;
+    } catch (e) { out.innerHTML = '<div class="banner err">' + esc(e.message) + "</div>"; }
+  }
+  $("#safety").addEventListener("click", () => bankers(false));
+  $("#request").addEventListener("click", () => bankers(true));
+
+  function colourLog(lines) {
+    return lines.map((l) => { const e = esc(l);
+      return /^(PHASE|BANKER)/.test(l) ? '<span class="h">' + e + "</span>" : /^GRANT/.test(l) ? '<span class="g">' + e + "</span>" : /^(REJECT|FAIL)/.test(l) ? '<span class="r">' + e + "</span>" : '<span class="d">' + e + "</span>"; }).join("\n");
+  }
+  $("#dry").addEventListener("click", async () => {
+    const out = $("#dryOut"); $("#dry").disabled = true;
+    try {
+      const secs = await Api.get("/sections");
+      const r = await Api.post("/timetable/generate", { sectionIds: secs.map((s) => s.id), dryRun: true });
+      const p = r.bankersPrecheck;
+      out.innerHTML = '<div class="banner ' + (r.failed.length ? "warn" : "ok") + '">Dry run (nothing saved): ' + r.placed + " of " + r.required + " periods placed in " + r.millis + " ms. Banker's pre-check: " +
+        (p.safe ? '<span class="badge badge-ok">SAFE</span>' : '<span class="badge badge-err">UNSAFE</span> ' + esc(p.shortages.join("; "))) + '</div><div class="log">' + colourLog(r.trace) + "</div>";
+    } catch (e) { out.innerHTML = '<div class="banner err">' + esc(e.message) + "</div>"; }
+    finally { $("#dry").disabled = false; }
+  });
+
+  // =============================================================== deadlock
+  let courses = [], sections = [], slots = [], rooms = [], entries = [];
+  function renderAnalysis(d) {
+    $("#status").innerHTML = d.deadlocked
+      ? '<div class="banner err"><b>DEADLOCK DETECTED.</b> ' + d.deadlocks.length + " circular wait(s) — none of these classes can move on its own.</div>"
+      : d.waiting.length ? '<div class="banner warn">' + d.waiting.length + " request(s) are waiting for a room or period, but there is <b>no cycle</b>, so there is no deadlock: they will proceed as soon as the blocking class moves.</div>"
+      : '<div class="banner ok">No waiting requests, no deadlock.</div>';
+    $("#cycles").innerHTML = d.deadlocks.map((x) => '<div class="cycle"><b>Circular wait</b>' + esc(x.description) + "</div>").join("");
+    $("#waiting").innerHTML = d.waiting.length ? '<table class="data-table"><thead><tr><th>Waiting class</th><th>Wants</th><th>Blocked by</th><th></th></tr></thead><tbody>' +
+      d.waiting.map((w) => "<tr><td>" + esc(w.entry) + "</td><td>" + esc(w.wants) + "</td><td>" + w.blockedBy.map(esc).join("<br>") + '</td><td class="actions"><button class="btn-danger btn-sm" data-cancel="' + w.id + '">Cancel</button></td></tr>').join("") + "</tbody></table>" : "";
+    $$("#waiting [data-cancel]").forEach((b) => b.addEventListener("click", async () => { try { await Api.del("/os/moves/" + b.dataset.cancel); refresh(); } catch (e) { toast(e.message, "err"); } }));
+    if (d.history) {
+      $("#hist").innerHTML = d.history.length ? '<table class="data-table"><thead><tr><th>#</th><th>Class</th><th>Wanted</th><th>Status</th><th>When</th></tr></thead><tbody>' +
+        d.history.map((h) => "<tr><td>" + h.id + "</td><td>" + esc(h.subject) + " (" + esc(h.section) + ")</td><td>" + esc(h.targetRoom + " " + h.day + " " + h.st) + '</td><td><span class="badge ' +
+          (h.status === "GRANTED" ? "badge-ok" : h.status === "WAITING" ? "badge-warn" : "badge-lecture") + '">' + h.status + "</span></td><td>" + fmtDateTime(h.createdAt) + "</td></tr>").join("") + "</tbody></table>" : '<div class="empty">No move requests yet.</div>';
+    }
+  }
+  async function refresh() { try { renderAnalysis(await Api.get("/os/deadlock")); } catch (e) { toast(e.message, "err"); } }
+  $("#analyze").addEventListener("click", refresh);
+  $("#demo").addEventListener("click", async () => { try { await Api.post("/os/deadlock/demo"); toast("Demo created: two classes now wait for each other's room.", "ok"); await refresh(); } catch (e) { toast(e.message, "err"); } });
+  $("#resolve").addEventListener("click", async () => {
+    try { const r = await Api.post("/os/deadlock/resolve"); toast(r.message, r.failed.length ? "err" : "ok"); await refresh(); } catch (e) { toast(e.message, "err"); }
+  });
+
+  const $mc = $("#mc"), $my = $("#my"), $ms = $("#ms"), $me = $("#me"), $mr = $("#mr"), $mp = $("#mp");
+  async function loadMoveEntries() {
+    const list = sections.filter((s) => String(s.courseId) === $mc.value && String(s.year) === $my.value);
+    fillSelect($ms, list, (s) => s.id, (s) => s.name, list.length ? null : "No sections");
+    await loadClasses();
+  }
+  let cseq = 0;
+  async function loadClasses() {
+    const my = ++cseq;
+    const fetched = $ms.value ? (await Api.get("/timetable?sectionId=" + $ms.value)).filter((e) => !e.isLab) : [];
+    if (my !== cseq) return;
+    entries = fetched;
+    fillSelect($me, entries, (e) => e.id, (e) => e.slot.day + " " + e.slot.time + " · " + e.subject + " · " + e.room, entries.length ? null : "No lecture classes");
+  }
+  $mc.addEventListener("change", loadMoveEntries); $my.addEventListener("change", loadMoveEntries); $ms.addEventListener("change", loadClasses);
+  $("#submitMove").addEventListener("click", async () => {
+    if (!$me.value) return toast("Choose a class to move.", "err");
+    try {
+      const r = await Api.post("/os/moves", { entryId: +$me.value, roomId: +$mr.value, timeslotId: +$mp.value });
+      toast(r.status === "GRANTED" ? "Moved immediately — the target was free." : "Request is waiting: the target is held by another class.", r.status === "GRANTED" ? "ok" : "");
+      await loadClasses(); await refresh();
+    } catch (e) { toast(e.message, "err"); }
+  });
+
+  (async () => {
+    [courses, sections, slots, rooms] = await Promise.all([Api.get("/courses"), Api.get("/sections"), Api.get("/timeslots"), Api.get("/rooms")]);
+    fillSelect($mc, courses, (c) => c.id, (c) => c.name);
+    fillSelect($mr, rooms.filter((r) => r.type === "Lecture"), (r) => r.id, (r) => r.name);
+    fillSelect($mp, slots.filter((s) => !s.isBreak), (s) => s.id, (s) => s.day + " " + s.time);
+    await loadMoveEntries();
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>

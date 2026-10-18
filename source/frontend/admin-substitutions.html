@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Substitutions — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Faculty Substitution</h2>
+        <p>When a teacher is absent on a particular date, pick the class and the date. Only teachers who are genuinely free in that period are offered; the change is announced on the notice board automatically.</p>
+      </div>
+
+      <div class="card toolbar-card">
+        <div class="field"><label>Course</label><select id="course"></select></div>
+        <div class="field"><label>Year</label><select id="year"><option value="2">Year 2</option><option value="3">Year 3</option></select></div>
+        <div class="field"><label>Section</label><select id="section"></select></div>
+        <div class="field" style="min-width:300px"><label>Class</label><select id="entry"></select></div>
+        <div class="field"><label>Date</label><input type="date" id="date" /></div>
+        <button class="btn-primary" id="find">Find free teachers</button>
+      </div>
+      <div id="msg" style="margin-top:14px"></div>
+      <div class="card toolbar-card hidden" id="assign" style="margin-top:6px">
+        <div class="field"><label>Substitute teacher</label><select id="sub"></select></div>
+        <div class="field" style="min-width:260px"><label>Reason (optional)</label><input id="reason" placeholder="e.g. Medical leave" /></div>
+        <button class="btn-accent" id="save">Assign substitute</button>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-head"><h3>Recent &amp; upcoming substitutions</h3></div>
+        <div class="table-wrap" id="list"></div>
+      </div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "subs");
+  let courses = [], sections = [], entries = [];
+  const $c = $("#course"), $y = $("#year"), $s = $("#section"), $e = $("#entry"), $date = $("#date");
+
+  let eseq = 0;
+  async function loadEntries() {
+    const my = ++eseq;
+    const list = sections.filter((s) => String(s.courseId) === $c.value && String(s.year) === $y.value);
+    fillSelect($s, list, (s) => s.id, (s) => s.name, list.length ? null : "No sections");
+    const fetched = $s.value ? await Api.get("/timetable?sectionId=" + $s.value) : [];
+    if (my !== eseq) return;
+    entries = fetched;
+    fillSelect($e, entries, (x) => x.id, (x) => x.slot.day + " " + x.slot.time + " · " + x.subject + " · " + x.faculty, entries.length ? null : "No timetable yet — generate one first");
+    syncDate();
+  }
+  function syncDate() {
+    const en = entries.find((x) => String(x.id) === $e.value);
+    if (en) $date.value = nextDateFor(en.slot.day);
+    $("#assign").classList.add("hidden");
+  }
+  async function loadList() {
+    const rows = await Api.get("/substitutions");
+    $("#list").innerHTML = rows.length ? '<table class="data-table"><thead><tr><th>Date</th><th>Period</th><th>Class</th><th>Teacher &rarr; Substitute</th><th>Reason</th><th></th></tr></thead><tbody>' +
+      rows.map((r) => "<tr><td>" + esc(fmtDate(r.subDate)) + "</td><td>" + esc(r.startTime + "-" + r.endTime) + "</td><td><b>" + esc(r.subject) + "</b><div class='muted small'>" + esc(r.section) + " · " + esc(r.room) + "</div></td><td>" +
+        esc(r.originalFaculty) + " &rarr; <b>" + esc(r.substitute) + "</b></td><td>" + esc(r.reason || "—") + '</td><td class="actions"><button class="btn-danger btn-sm" data-del="' + r.id + '">Cancel</button></td></tr>').join("") + "</tbody></table>"
+      : '<div class="empty">No substitutions yet.</div>';
+    $$("#list [data-del]").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm("Cancel this substitution?")) return;
+      try { await Api.del("/substitutions/" + b.dataset.del); toast("Substitution cancelled.", "ok"); loadList(); } catch (e) { toast(e.message, "err"); }
+    }));
+  }
+
+  $("#find").addEventListener("click", async () => {
+    $("#msg").innerHTML = "";
+    if (!$e.value || !$date.value) return toast("Choose a class and a date.", "err");
+    try {
+      const free = await Api.get("/substitutions/available?entryId=" + $e.value + "&date=" + $date.value);
+      fillSelect($("#sub"), free, (f) => f.id, (f) => f.name, free.length ? null : "Nobody is free in this period");
+      $("#assign").classList.remove("hidden");
+      $("#msg").innerHTML = '<div class="banner info">' + free.length + " teacher(s) are free in that period on that date.</div>";
+    } catch (e) { $("#assign").classList.add("hidden"); $("#msg").innerHTML = '<div class="banner err">' + esc(e.message) + "</div>"; }
+  });
+  $("#save").addEventListener("click", async () => {
+    if (!$("#sub").value) return toast("Choose a substitute.", "err");
+    try {
+      await Api.post("/substitutions", { entryId: +$e.value, date: $date.value, substituteFacultyId: +$("#sub").value, reason: $("#reason").value });
+      toast("Substitute assigned and announced.", "ok");
+      $("#assign").classList.add("hidden"); $("#msg").innerHTML = ""; $("#reason").value = "";
+      loadList();
+    } catch (e) { $("#msg").innerHTML = '<div class="banner err">' + esc(e.message) + "</div>"; }
+  });
+  $c.addEventListener("change", loadEntries); $y.addEventListener("change", loadEntries);
+  $s.addEventListener("change", async () => { entries = await Api.get("/timetable?sectionId=" + $s.value); fillSelect($e, entries, (x) => x.id, (x) => x.slot.day + " " + x.slot.time + " · " + x.subject + " · " + x.faculty); syncDate(); });
+  $e.addEventListener("change", syncDate);
+
+  (async () => {
+    [courses, sections] = await Promise.all([Api.get("/courses"), Api.get("/sections")]);
+    fillSelect($c, courses, (c) => c.id, (c) => c.name);
+    await loadEntries(); await loadList();
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>

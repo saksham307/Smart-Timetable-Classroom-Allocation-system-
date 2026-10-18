@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Generate Timetable — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Generate Timetable</h2>
+        <p>Choose a course and year, then generate one section or every section at once. Practicals are placed first, breaks stay free, and no room, teacher or section is ever double-booked.</p>
+      </div>
+
+      <div class="card toolbar-card">
+        <div class="field"><label>Course</label><select id="course"></select></div>
+        <div class="field"><label>Year</label><select id="year"><option value="2">Year 2</option><option value="3">Year 3</option></select></div>
+        <div class="field"><label>Section</label><select id="section"></select></div>
+        <button class="btn-accent" id="genOne">Generate this section</button>
+        <button class="btn-primary" id="genAll">Generate all sections of this course &amp; year</button>
+      </div>
+      <div id="result" style="margin-top:18px"></div>
+      <div class="card card-pad" style="margin-top:18px">
+        <div id="legend"></div>
+        <div id="grid"></div>
+        <div class="muted small" style="margin-top:10px">Hover a class and press &times; to remove it (a practical removes both of its periods).</div>
+      </div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script src="js/timetable-grid.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "timetable");
+  let courses = [], sections = [], slots = [];
+  const courseSel = $("#course"), yearSel = $("#year"), secSel = $("#section");
+  $("#legend").innerHTML = gridLegend();
+
+  const current = () => sections.filter((s) => String(s.courseId) === courseSel.value && String(s.year) === yearSel.value);
+
+  function onFilter() {
+    const list = current();
+    fillSelect(secSel, list, (s) => s.id, (s) => s.name + " (" + s.strength + " students)", list.length ? null : "No sections yet");
+    loadGrid();
+  }
+
+  let gseq = 0;
+  async function loadGrid() {
+    if (!secSel.value) { $("#grid").innerHTML = '<div class="empty">No sections for this course and year yet. Add one under <a href="admin-sections.html">Sections</a>.</div>'; return; }
+    const my = ++gseq;
+    const entries = await Api.get("/timetable?sectionId=" + secSel.value);
+    if (my !== gseq) return;
+    if (!entries.length) { $("#grid").innerHTML = '<div class="empty">This section has no timetable yet. Press “Generate this section”.</div>'; return; }
+    renderTimetableGrid($("#grid"), slots, entries, {
+      onRemove: async (id) => {
+        if (!confirm("Remove this class?")) return;
+        try { await Api.del("/timetable/entry/" + id); toast("Class removed.", "ok"); loadGrid(); } catch (e) { toast(e.message, "err"); }
+      },
+    });
+  }
+
+  function showResult(res) {
+    const complete = res.failed.length === 0;
+    let h = '<div class="banner ' + (complete ? "ok" : "warn") + '"><b>' + (complete ? "Timetable generated." : "Timetable generated with gaps.") + "</b> " +
+      res.placed + " of " + res.required + " periods placed in " + res.millis + " ms across " + res.sections.length + " section(s).";
+    if (res.bankersPrecheck && !res.bankersPrecheck.safe)
+      h += "<br><b>Capacity warning:</b> " + res.bankersPrecheck.shortages.map(esc).join("; ") + ".";
+    if (!complete) h += "<br>Could not place: " + res.failed.map(esc).join(" &middot; ");
+    h += "</div>";
+    $("#result").innerHTML = h;
+  }
+
+  async function generate(body, btn) {
+    btn.disabled = true;
+    try { showResult(await Api.post("/timetable/generate", body)); toast("Timetable generated.", "ok"); await loadGrid(); }
+    catch (e) { $("#result").innerHTML = '<div class="banner err">' + esc(e.message) + "</div>"; }
+    finally { btn.disabled = false; }
+  }
+
+  $("#genOne").addEventListener("click", () => { if (!secSel.value) return toast("Choose a section first.", "err"); generate({ sectionId: Number(secSel.value) }, $("#genOne")); });
+  $("#genAll").addEventListener("click", () => {
+    if (!current().length) return toast("There are no sections for this course and year.", "err");
+    generate({ courseId: Number(courseSel.value), year: Number(yearSel.value) }, $("#genAll"));
+  });
+  courseSel.addEventListener("change", onFilter);
+  yearSel.addEventListener("change", onFilter);
+  secSel.addEventListener("change", loadGrid);
+
+  (async () => {
+    [courses, sections, slots] = await Promise.all([Api.get("/courses"), Api.get("/sections"), Api.get("/timeslots")]);
+    fillSelect(courseSel, courses, (c) => c.id, (c) => c.name);
+    onFilter();
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>
