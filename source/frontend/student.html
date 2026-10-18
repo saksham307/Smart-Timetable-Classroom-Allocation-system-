@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Timetable — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>My Timetable</h2>
+        <p>Rooms, labs and teachers for every class of your section, with any substitutions announced for the coming days.</p>
+      </div>
+
+      <div id="info"></div>
+      <div class="card card-pad"><div id="legend"></div><div id="grid"></div></div>
+      <div class="grid-2" style="margin-top:18px">
+        <div class="card"><div class="card-head"><h3>Substitutions for your section</h3></div><div class="card-pad" id="subs"></div></div>
+        <div class="card"><div class="card-head"><h3>Latest notices</h3><a class="small right" href="notices.html">All notices &rarr;</a></div><div class="card-pad" id="notices"></div></div>
+      </div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script src="js/timetable-grid.js?v=5"></script>
+  <script>
+const user = requireRole("student");
+if (user) {
+  renderSidebar(user, "timetable");
+  $("#legend").innerHTML = gridLegend();
+  (async () => {
+    if (!user.sectionId) { $("#info").innerHTML = '<div class="banner warn">Your account is not linked to a section yet. Ask the administrator.</div>'; return; }
+    const [sections, slots, entries, subs, notices] = await Promise.all([Api.get("/sections"), Api.get("/timeslots"), Api.get("/timetable?sectionId=" + user.sectionId),
+      Api.get("/substitutions?sectionId=" + user.sectionId + "&from=" + new Date().toISOString().slice(0, 10)), Api.get("/notices?limit=3")]);
+    const sec = sections.find((s) => s.id === user.sectionId);
+    if (sec) $("#info").innerHTML = '<div class="banner info"><b>' + esc(sec.name) + "</b> &middot; " + esc(sec.courseName || "") + " &middot; Year " + sec.year + " &middot; " + sec.strength + " students</div>";
+    if (!entries.length) $("#grid").innerHTML = '<div class="empty">The timetable for your section has not been published yet — check back soon.</div>';
+    else renderTimetableGrid($("#grid"), slots, entries, {});
+    $("#subs").innerHTML = subs.length ? subs.map((s) => '<div class="notice change"><div class="notice-title">' + esc(s.subject) + "</div><div class=\"notice-body\">" + esc(fmtDate(s.subDate)) + ", " + esc(s.startTime + "–" + s.endTime) +
+      ": <b>" + esc(s.substitute) + "</b> instead of " + esc(s.originalFaculty) + "</div></div>").join("") : '<div class="empty">No substitutions coming up.</div>';
+    $("#notices").innerHTML = notices.length ? notices.map((n) => '<div class="notice ' + n.kind + '"><div class="notice-title">' + esc(n.title) + '</div><div class="notice-foot">' + fmtDateTime(n.createdAt) + "</div></div>").join("") : '<div class="empty">No notices.</div>';
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>
