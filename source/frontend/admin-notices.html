@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notice Board — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Notice Board</h2>
+        <p>Post announcements for everyone, only faculty, or only students. Timetable changes, substitutions and exam schedules are posted here automatically.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>New announcement</h3></div>
+        <div class="form-grid" style="border-top:none">
+          <div class="field" style="grid-column:1/-1"><label>Title</label><input id="title" maxlength="150" placeholder="e.g. Mid-semester break" /></div>
+          <div class="field" style="grid-column:1/-1"><label>Message</label><textarea id="body" rows="3" placeholder="Write the announcement…"></textarea></div>
+          <div class="field"><label>Audience</label><select id="aud"><option value="all">Everyone</option><option value="faculty">Faculty only</option><option value="student">Students only</option></select></div>
+          <div class="form-actions"><button class="btn-accent" id="post">Post announcement</button></div>
+        </div>
+      </div>
+      <div id="list" style="margin-top:20px"></div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "notices");
+  async function load() {
+    const rows = await Api.get("/notices?limit=60");
+    $("#list").innerHTML = rows.length ? rows.map((n) =>
+      '<div class="notice ' + n.kind + '"><div class="notice-head"><span class="notice-title">' + esc(n.title) + "</span>" +
+      '<span class="badge ' + (n.kind === "change" ? "badge-info" : "badge-warn") + '">' + (n.kind === "change" ? "Timetable change" : "Announcement") + "</span>" +
+      '<span class="badge badge-lecture">' + esc(n.audience === "all" ? "Everyone" : n.audience) + '</span><button class="btn-danger btn-sm right" data-del="' + n.id + '">Delete</button></div>' +
+      '<div class="notice-body">' + esc(n.body) + '</div><div class="notice-foot">' + esc(n.createdBy) + " &middot; " + fmtDateTime(n.createdAt) + "</div></div>").join("")
+      : '<div class="empty">No notices.</div>';
+    $$("#list [data-del]").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm("Delete this notice?")) return;
+      try { await Api.del("/notices/" + b.dataset.del); load(); } catch (e) { toast(e.message, "err"); }
+    }));
+  }
+  $("#post").addEventListener("click", async () => {
+    const title = $("#title").value.trim(), body = $("#body").value.trim();
+    if (!title || !body) return toast("Title and message are required.", "err");
+    try { await Api.post("/notices", { title, body, audience: $("#aud").value }); $("#title").value = ""; $("#body").value = ""; toast("Announcement posted.", "ok"); load(); }
+    catch (e) { toast(e.message, "err"); }
+  });
+  load().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>

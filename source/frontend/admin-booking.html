@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manual Booking — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Manual Booking</h2>
+        <p>Book a single class by hand, or move an existing one. If something clashes you get the reason and a free alternative, so nothing is ever double-booked.</p>
+      </div>
+
+      <div class="card toolbar-card">
+        <div class="field"><label>Course</label><select id="course"></select></div>
+        <div class="field"><label>Year</label><select id="year"><option value="2">Year 2</option><option value="3">Year 3</option></select></div>
+        <div class="field"><label>Section</label><select id="section"></select></div>
+        <div class="field"><label>Subject</label><select id="subject"></select></div>
+        <div class="field"><label>Room</label><select id="room"></select></div>
+        <div class="field"><label>Day</label><select id="day"></select></div>
+        <div class="field"><label>Period</label><select id="period"></select></div>
+        <button class="btn-accent" id="book">Book class</button>
+      </div>
+      <div class="muted small" id="hint" style="margin:8px 4px 0"></div>
+      <div id="msg" style="margin-top:14px"></div>
+      <div class="card card-pad" style="margin-top:6px">
+        <div id="legend"></div>
+        <div id="grid"></div>
+        <div class="muted small" style="margin-top:10px">Tip: click an empty cell to fill in its day and period.</div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-head"><h3>Move a class to another room or period</h3><span class="muted small right">for the section selected above &middot; lectures only</span></div>
+        <div class="toolbar-card">
+          <div class="field" style="min-width:290px"><label>Class to move</label><select id="mvClass"></select></div>
+          <div class="field"><label>New room</label><select id="mvRoom"></select></div>
+          <div class="field"><label>New period</label><select id="mvPeriod"></select></div>
+          <button class="btn-primary" id="mvBtn">Move class</button>
+        </div>
+        <div id="mvMsg" style="padding:0 20px 14px"></div>
+        <div id="mvPending"></div>
+      </div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script src="js/timetable-grid.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "booking");
+  let courses = [], sections = [], slots = [], subjects = [], rooms = [];
+  const $c = $("#course"), $y = $("#year"), $s = $("#section"), $sub = $("#subject"), $r = $("#room"), $d = $("#day"), $p = $("#period");
+  $("#legend").innerHTML = gridLegend();
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  fillSelect($d, DAYS, (d) => d, (d) => d);
+
+  function periods() {
+    const list = slots.filter((s) => s.day === $d.value && !s.isBreak);
+    fillSelect($p, list, (s) => s.id, (s) => s.time, null, true);
+  }
+  function roomsForSubject() {
+    const sb = subjects.find((x) => String(x.id) === $sub.value);
+    const type = sb && sb.isLab ? "Lab" : "Lecture";
+    fillSelect($r, rooms.filter((r) => r.type === type), (r) => r.id, (r) => r.name + " (" + r.capacity + ")", null, true);
+    $("#hint").textContent = sb ? (sb.isLab ? "Practical: this books TWO consecutive periods starting at the chosen one (never across a break), in a lab room, with every assigned teacher free."
+      : "Lecture: books one period in a lecture room.") : "";
+  }
+  let sseq = 0;
+  async function loadSubjects() {
+    const my = ++sseq;
+    const list = sections.filter((s) => String(s.courseId) === $c.value && String(s.year) === $y.value);
+    fillSelect($s, list, (s) => s.id, (s) => s.name, list.length ? null : "No sections");
+    const fetched = $c.value ? await Api.get("/subjects?courseId=" + $c.value + "&year=" + $y.value) : [];
+    if (my !== sseq) return;            // the course/year changed again while this was loading
+    subjects = fetched;
+    fillSelect($sub, subjects, (s) => s.id, (s) => s.name + (s.isLab ? " (practical)" : ""), subjects.length ? null : "No subjects");
+    roomsForSubject();
+    loadGrid();
+  }
+  let gseq = 0;
+  async function loadGrid() {
+    if (!$s.value) { $("#grid").innerHTML = '<div class="empty">Choose a section.</div>'; return; }
+    const my = ++gseq;
+    const entries = await Api.get("/timetable?sectionId=" + $s.value);
+    if (my !== gseq) return;
+    renderTimetableGrid($("#grid"), slots, entries, {
+      onCellClick: (slot, entry) => { if (!entry) { $d.value = slot.day; periods(); $p.value = slot.id; } },
+    });
+    const movable = entries.filter((e) => !e.isLab);
+    fillSelect($("#mvClass"), movable, (e) => e.id, (e) => e.slot.day + " " + e.slot.time + " · " + e.subject + " · " + e.room, movable.length ? null : "No lecture classes yet");
+    loadPending();
+  }
+
+  async function loadPending() {
+    const d = await Api.get("/os/deadlock");
+    $("#mvPending").innerHTML = d.waiting.length ? '<div class="table-wrap"><table class="data-table"><thead><tr><th>Waiting move</th><th>Wants</th><th>Waiting for</th><th></th></tr></thead><tbody>' +
+      d.waiting.map((w) => "<tr><td>" + esc(w.entry) + "</td><td>" + esc(w.wants) + "</td><td>" + w.blockedBy.map(esc).join("<br>") + '</td><td class="actions"><button class="btn-danger btn-sm" data-cancel="' + w.id + '">Cancel</button></td></tr>').join("") + "</tbody></table></div>" : "";
+    $$("#mvPending [data-cancel]").forEach((b) => b.addEventListener("click", async () => { try { await Api.del("/os/moves/" + b.dataset.cancel); loadPending(); } catch (e) { toast(e.message, "err"); } }));
+  }
+
+  $("#mvBtn").addEventListener("click", async () => {
+    const box = $("#mvMsg");
+    box.innerHTML = "";
+    if (!$("#mvClass").value) return toast("Choose a class to move.", "err");
+    $("#mvBtn").disabled = true;
+    try {
+      const r = await Api.post("/timetable/move", { entryId: +$("#mvClass").value, roomId: +$("#mvRoom").value, timeslotId: +$("#mvPeriod").value });
+      if (r.status === "GRANTED") box.innerHTML = '<div class="banner ok">' + (r.autoResolved ? "These classes were waiting on each other's rooms, so they were swapped together automatically." : "Class moved.") + "</div>";
+      else box.innerHTML = '<div class="banner warn">That room and period are in use right now. Your request is queued and will go through automatically as soon as they are free.</div>';
+      await loadGrid();
+    } catch (e) { box.innerHTML = '<div class="banner err">' + esc(e.message) + "</div>"; }
+    finally { $("#mvBtn").disabled = false; }
+  });
+
+  $("#book").addEventListener("click", async () => {
+    const msg = $("#msg");
+    msg.innerHTML = "";
+    if (!$s.value || !$sub.value || !$r.value || !$p.value) return toast("Fill in section, subject, room, day and period.", "err");
+    const btn = $("#book");
+    btn.disabled = true;
+    try {
+      const res = await Api.post("/timetable/entry", { sectionId: +$s.value, subjectId: +$sub.value, roomId: +$r.value, timeslotId: +$p.value });
+      msg.innerHTML = '<div class="banner ok">Booked' + (res.periods > 1 ? " (" + res.periods + " consecutive periods)." : ".") + "</div>";
+      loadGrid();
+    } catch (e) {
+      const d = e.payload || {};
+      if (e.status === 409 && d.suggestion) {
+        msg.innerHTML = '<div class="banner err"><b>Conflict (' + esc(d.type) + "):</b> " + esc(e.message) + "<br>Suggested free period: <b>" + esc(d.suggestion) + "</b> " +
+          (d.suggestionSlotId ? '<button class="btn-ghost btn-sm" id="useSug" style="margin-left:8px">Use this period</button>' : "") + "</div>";
+        const u = $("#useSug");
+        if (u) u.addEventListener("click", () => { const s = slots.find((x) => x.id === d.suggestionSlotId); $d.value = s.day; periods(); $p.value = s.id; msg.innerHTML = ""; toast("Period updated — press Book class.", "ok"); });
+      } else {
+        msg.innerHTML = '<div class="banner err">' + esc(e.message) + "</div>";
+      }
+    } finally { btn.disabled = false; }
+  });
+
+  $c.addEventListener("change", loadSubjects);
+  $y.addEventListener("change", loadSubjects);
+  $s.addEventListener("change", loadGrid);
+  $sub.addEventListener("change", roomsForSubject);
+  $d.addEventListener("change", periods);
+
+  (async () => {
+    [courses, sections, slots, rooms] = await Promise.all([Api.get("/courses"), Api.get("/sections"), Api.get("/timeslots"), Api.get("/rooms")]);
+    fillSelect($c, courses, (c) => c.id, (c) => c.name);
+    fillSelect($("#mvRoom"), rooms.filter((r) => r.type === "Lecture"), (r) => r.id, (r) => r.name + " (" + r.capacity + ")");
+    fillSelect($("#mvPeriod"), slots.filter((x) => !x.isBreak), (x) => x.id, (x) => x.day + " " + x.time);
+    periods();
+    await loadSubjects();
+  })().catch((e) => toast(e.message, "err"));
+}
+  </script>
+</body>
+</html>

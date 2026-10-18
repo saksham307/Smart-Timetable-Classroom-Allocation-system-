@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Faculty — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Faculty</h2>
+        <p>Teaching staff who can be assigned to subjects. A teacher can be removed only after their subjects are reassigned.</p>
+      </div>
+<div class="card" id="box"></div>
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script src="js/crud-table.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "faculty");
+  CrudTable({
+    container: $("#box"), resource: "/faculty",
+    columns: [{ label: "Name", render: (r) => "<b>" + esc(r.name) + "</b>" }],
+    fields: [{ key: "name", label: "Full name", type: "text", placeholder: "e.g. Dr. A. Verma" }],
+    removeLabel: (r) => r.name,
+  });
+}
+  </script>
+</body>
+</html>
