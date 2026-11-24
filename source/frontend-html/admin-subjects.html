@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Subjects — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Subjects</h2>
+        <p>Subjects belong to a course and year. Practicals are scheduled as two consecutive periods and can have several teachers who must all be free.</p>
+      </div>
+
+      <div class="card toolbar-card" style="margin-bottom:18px">
+        <div class="field"><label>Show course</label><select id="fc"></select></div>
+        <div class="field"><label>Show year</label><select id="fy"><option value="">All years</option><option value="2">Year 2</option><option value="3">Year 3</option></select></div>
+      </div>
+      <div class="card" id="box"></div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script src="js/crud-table.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "subjects");
+  (async () => {
+    const [courses, faculty] = await Promise.all([Api.get("/courses"), Api.get("/faculty")]);
+    fillSelect($("#fc"), courses, (c) => c.id, (c) => c.name, "All courses");
+    const fopts = faculty.map((f) => ({ value: f.id, label: f.name }));
+    const t = CrudTable({
+      container: $("#box"), resource: "/subjects",
+      query: () => { const p = []; if ($("#fc").value) p.push("courseId=" + $("#fc").value); if ($("#fy").value) p.push("year=" + $("#fy").value); return p.length ? "?" + p.join("&") : ""; },
+      columns: [{ label: "Subject", render: (r) => "<b>" + esc(r.name) + "</b>" },
+                { label: "Course / year", render: (r) => esc(r.courseName || "—") + ' <span class="badge badge-info">Y' + r.year + "</span>" },
+                { label: "Type", render: (r) => labBadge(r.isLab) },
+                { label: "Teacher(s)", render: (r) => esc(r.facultyName) + (r.extraFaculty ? '<div class="muted small">+ ' + esc(r.extraFaculty) + "</div>" : "") },
+                { label: "Per week", render: (r) => r.isLab ? r.periodsPerWeek + " session(s) × 2 periods" : r.periodsPerWeek + " periods" }],
+      fields: [{ key: "name", label: "Subject name", type: "text", placeholder: "e.g. Operating Systems" },
+               { key: "courseId", label: "Course", type: "select", options: courses.map((c) => ({ value: c.id, label: c.name })) },
+               { key: "year", label: "Year", type: "select", options: [{ value: 2, label: "Year 2" }, { value: 3, label: "Year 3" }] },
+               { key: "facultyId", label: "Main teacher", type: "select", options: fopts },
+               { key: "isLab", label: "Type", type: "select", default: "false", options: [{ value: "false", label: "Lecture" }, { value: "true", label: "Practical (lab)" }] },
+               { key: "periodsPerWeek", label: "Per week", type: "number", min: 1, max: 6, default: 3, help: "Lectures: periods per week. Practicals: sessions per week (each is 2 periods)." },
+               { key: "extraFacultyIds", label: "Additional teachers", type: "multiselect", options: fopts, showIf: (v) => v.isLab === "true", help: "Hold Ctrl / Cmd to pick several. All must be free for the lab." }],
+      removeLabel: (r) => "subject " + r.name,
+    });
+    $("#fc").addEventListener("change", () => t.reload());
+    $("#fy").addEventListener("change", () => t.reload());
+  })();
+}
+  </script>
+</body>
+</html>
