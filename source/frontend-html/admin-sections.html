@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sections — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Sections</h2>
+        <p>A section is a group of students in one course and year. Each section gets its own timetable.</p>
+      </div>
+
+      <div class="card toolbar-card" style="margin-bottom:18px">
+        <div class="field"><label>Show course</label><select id="fc"></select></div>
+        <div class="field"><label>Show year</label><select id="fy"><option value="">All years</option><option value="2">Year 2</option><option value="3">Year 3</option></select></div>
+      </div>
+      <div class="card" id="box"></div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script src="js/crud-table.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "sections");
+  (async () => {
+    const courses = await Api.get("/courses");
+    fillSelect($("#fc"), courses, (c) => c.id, (c) => c.name, "All courses");
+    const t = CrudTable({
+      container: $("#box"), resource: "/sections",
+      query: () => { const p = []; if ($("#fc").value) p.push("courseId=" + $("#fc").value); if ($("#fy").value) p.push("year=" + $("#fy").value); return p.length ? "?" + p.join("&") : ""; },
+      columns: [{ label: "Section", render: (r) => "<b>" + esc(r.name) + "</b>" },
+                { label: "Course", render: (r) => esc(r.courseName || "—") },
+                { label: "Year", render: (r) => '<span class="badge badge-info">Year ' + r.year + "</span>" },
+                { label: "Students", key: "strength" }],
+      fields: [{ key: "name", label: "Section name", type: "text", placeholder: "e.g. CSE-2A" },
+               { key: "courseId", label: "Course", type: "select", options: courses.map((c) => ({ value: c.id, label: c.name })) },
+               { key: "year", label: "Year", type: "select", options: [{ value: 2, label: "Year 2" }, { value: 3, label: "Year 3" }] },
+               { key: "strength", label: "Number of students", type: "number", min: 1, default: 60 }],
+      removeLabel: (r) => "section " + r.name + " (its timetable entries are removed too)",
+    });
+    $("#fc").addEventListener("change", () => t.reload());
+    $("#fy").addEventListener("change", () => t.reload());
+  })();
+}
+  </script>
+</body>
+</html>
