@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign in — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="login-screen">
+    <form class="login-card" id="loginForm">
+      <div class="login-mark">TC</div>
+      <h1>Timetable &amp; Classroom Allocation</h1>
+      <p class="sub">Sign in with your ID. Administrators, faculty and students all use this screen — your role is found automatically.</p>
+
+      <label for="userId">User ID</label>
+      <input id="userId" placeholder="e.g. admin1, fac1, stu1" autocomplete="username" autofocus />
+
+      <label for="userPass">Password</label>
+      <input id="userPass" type="password" placeholder="Enter your password" autocomplete="current-password" />
+
+      <p class="error" id="errorMsg"></p>
+      <button type="submit" class="btn-accent" id="submitBtn">Sign in</button>
+
+      <div class="demo-box">
+        Demo accounts (click to fill):<br/>
+        Admin <code data-u="admin1" data-p="admin123">admin1</code>
+        Faculty <code data-u="fac1" data-p="faculty123">fac1</code>
+        Student <code data-u="stu1" data-p="student123">stu1</code>
+      </div>
+    </form>
+  </div>
+
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script>
+    const u = getUser();
+    if (u) { window.location.href = homeFor(u.role); }
+    const errorMsg = document.getElementById("errorMsg");
+    const submitBtn = document.getElementById("submitBtn");
+    document.querySelectorAll(".demo-box code").forEach((c) => c.addEventListener("click", () => {
+      document.getElementById("userId").value = c.dataset.u;
+      document.getElementById("userPass").value = c.dataset.p;
+    }));
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorMsg.textContent = "";
+      const id = document.getElementById("userId").value.trim();
+      const password = document.getElementById("userPass").value;
+      if (!id || !password) { errorMsg.textContent = "Enter both your ID and password."; return; }
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Signing in...";
+      try {
+        const { user } = await Api.login(id, password);
+        setUser(user);
+        window.location.href = homeFor(user.role);
+      } catch (err) {
+        errorMsg.textContent = err.message.includes("Failed to fetch")
+          ? "Can't reach the server. Is Tomcat running and the app deployed at /timetable?" : err.message;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Sign in";
+      }
+    });
+  </script>
+</body>
+</html>
