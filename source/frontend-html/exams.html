@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Exam Schedule — Timetable &amp; Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+<style>
+  .exams-pending-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 68vh;
+    padding: 16px 0;
+  }
+  .exams-pending-card {
+    max-width: 580px;
+    width: 100%;
+    text-align: center;
+    padding: 42px 32px;
+  }
+  .exams-pending-badge {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #d97706;
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    margin-bottom: 18px;
+  }
+  .exams-pending-card h2 {
+    margin: 0 0 10px;
+    font-size: 1.55rem;
+  }
+  .exams-pending-desc {
+    margin: 0 auto 24px;
+    max-width: 460px;
+    line-height: 1.6;
+  }
+  .exams-pending-pills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .exams-pending-pill {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    border: 1px solid rgba(128, 128, 128, 0.25);
+    background: rgba(128, 128, 128, 0.08);
+  }
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Exam Schedule &amp; Seating</h2>
+        <p>Upcoming exam dates, halls, and student seating allocations.</p>
+      </div>
+
+      <div class="exams-pending-wrap">
+        <div class="card exams-pending-card">
+          <div class="exams-pending-badge">Work Underway</div>
+          <h2>Exam Schedule Coming Soon</h2>
+          <p class="muted exams-pending-desc">
+            The exam schedule and hall seating view is currently under development.
+            Once published, you will be able to view exam dates, timings, and your
+            assigned hall and seat numbers right here.
+          </p>
+          <div class="exams-pending-pills">
+            <span class="exams-pending-pill">Exam Dates &amp; Timings</span>
+            <span class="exams-pending-pill">Assigned Hall</span>
+            <span class="exams-pending-pill">Seat Numbers</span>
+          </div>
+          <button type="button" class="btn-accent" onclick="window.history.back()">
+            Go Back
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script>
+const user = requireRole("any");
+if (user) {
+  renderSidebar(user, "exams");
+}
+  </script>
+</body>
+</html>
