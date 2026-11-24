@@ -1,7 +1,0 @@
-section,subject,type,periods,teacher,co_teachers,joint_group
-A,Operating Systems (CS-301),lecture,4,Dr. Asha Rao,,OS-AB
-B,Operating Systems (CS-301),lecture,4,Dr. Asha Rao,,OS-AB
-A,Database Systems (CS-302),lecture,4,Mr. Ravi Kumar,,
-B,Database Systems (CS-302),lecture,4,Ms. Neha Singh,,
-A,Database Systems Lab (CS-352),practical,2,Mr. Ravi Kumar,Ms. Pooja Das,
-B,Database Systems Lab (CS-352),practical,2,Ms. Neha Singh,Ms. Pooja Das,
