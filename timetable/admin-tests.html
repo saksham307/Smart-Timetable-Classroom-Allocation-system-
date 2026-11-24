@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>System Tests — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>System Tests & Evaluation</h2>
+        <p>The "Testing and Evaluation" goal as a live page: conflict-detection accuracy, mutual exclusion under concurrent admins, the database safety net, Banker's algorithm, deadlock detection and the response time of the engine. Temporary rows are always removed afterwards.</p>
+      </div>
+
+      <div class="banner info"><b>Developer / evaluation page.</b> This is not part of the day-to-day administrator workflow. It exists to demonstrate and test the operating-system and database techniques that run silently inside the system.</div>
+      <div class="card toolbar-card"><button class="btn-accent" id="run">Run all tests</button><span class="muted small" id="state">Takes a few seconds — it really starts 8 competing threads.</span></div>
+      <div id="summary" style="margin-top:18px"></div>
+      <div class="card hidden" id="resCard" style="margin-top:6px"><div class="table-wrap" id="results"></div></div>
+
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "tests");
+  $("#run").addEventListener("click", async () => {
+    $("#run").disabled = true; $("#state").textContent = "Running…"; $("#summary").innerHTML = "";
+    try {
+      const d = await Api.get("/tests/run");
+      $("#summary").innerHTML = '<div class="stat-grid"><div class="card stat-card"><div class="num">' + d.passed + " / " + d.total + '</div><div class="label">tests passed</div></div>' +
+        '<div class="card stat-card"><div class="num">' + d.accuracy + '%</div><div class="label">overall success rate</div></div>' +
+        '<div class="card stat-card"><div class="num">' + Math.round(d.tests.reduce((a, t) => a + t.ms, 0)) + ' ms</div><div class="label">total run time</div></div></div>';
+      $("#results").innerHTML = '<table class="data-table"><thead><tr><th>Result</th><th>Area</th><th>Test</th><th>Outcome</th><th>Time</th></tr></thead><tbody>' +
+        d.tests.map((t) => '<tr><td><span class="badge ' + (t.passed ? "badge-ok" : "badge-err") + '">' + (t.passed ? "PASS" : "FAIL") + "</span></td><td>" + esc(t.category) + "</td><td>" + esc(t.name) +
+          '</td><td class="small">' + esc(t.detail) + '</td><td class="small mono">' + t.ms.toFixed(1) + " ms</td></tr>").join("") + "</tbody></table>";
+      $("#resCard").classList.remove("hidden");
+      $("#state").textContent = "Finished.";
+    } catch (e) { $("#state").textContent = ""; $("#summary").innerHTML = '<div class="banner err">' + esc(e.message) + "</div>"; }
+    finally { $("#run").disabled = false; }
+  });
+}
+  </script>
+</body>
+</html>

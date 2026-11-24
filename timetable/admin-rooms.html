@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rooms & Labs — Timetable & Classroom Allocation</title>
+<link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2>Rooms & Labs</h2>
+        <p>Lecture rooms are used for lectures, lab rooms only for practicals. Removing a room also removes its bookings.</p>
+      </div>
+<div class="card" id="box"></div>
+    </main>
+  </div>
+  <script src="js/api.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/sidebar.js?v=5"></script>
+  <script src="js/crud-table.js?v=5"></script>
+  <script>
+const user = requireRole("admin");
+if (user) {
+  renderSidebar(user, "rooms");
+  CrudTable({
+    container: $("#box"), resource: "/rooms",
+    columns: [{ label: "Room", render: (r) => "<b>" + esc(r.name) + "</b>" },
+              { label: "Type", render: (r) => r.type === "Lab" ? '<span class="badge badge-lab">Lab</span>' : '<span class="badge badge-lecture">Lecture</span>' },
+              { label: "Capacity", key: "capacity" }],
+    fields: [{ key: "name", label: "Room name", type: "text", placeholder: "e.g. R107" },
+             { key: "type", label: "Type", type: "select", options: [{ value: "Lecture", label: "Lecture room" }, { value: "Lab", label: "Lab" }] },
+             { key: "capacity", label: "Capacity", type: "number", min: 1, default: 60 }],
+    removeLabel: (r) => "room " + r.name,
+  });
+}
+  </script>
+</body>
+</html>
