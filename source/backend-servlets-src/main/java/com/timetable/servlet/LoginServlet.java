@@ -8,7 +8,7 @@ import javax.servlet.http.HttpSession;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** /api/login (POST), /api/logout (POST), /api/me (GET). Creates a server-side HttpSession. */
+
 @WebServlet({"/api/login", "/api/logout", "/api/me"})
 public class LoginServlet extends ApiServlet {
 
