@@ -15,12 +15,7 @@ import java.net.URL;
 import java.sql.Connection;
 import java.util.Map;
 
-/**
- * Bulk import of sections, teachers and subjects from a published timetable page (URL or pasted HTML) or a CSV.
- *   POST /api/import/preview  -> what would be imported (nothing is saved)
- *   POST /api/import/commit   -> saves it in one transaction
- * POST needs the admin role (AuthFilter). Existing data is updated, never duplicated.
- */
+
 @WebServlet("/api/import/*")
 public class ImportServlet extends ApiServlet {
 
@@ -29,7 +24,7 @@ public class ImportServlet extends ApiServlet {
         if (u == null || !"admin".equals(String.valueOf(u.get("role")))) throw new ApiException(403, "Administrator access is required.");
     }
 
-    /** GET /api/import/accounts : every teacher / class login (admin only, includes the default passwords). */
+    
     @Override
     protected Object get(Req r) throws Exception {
         needAdmin(r);
@@ -39,7 +34,7 @@ public class ImportServlet extends ApiServlet {
     @Override
     protected Object post(Req r) throws Exception {
         String path = r.path();
-        if (path.endsWith("/accounts")) {                              // create missing teacher / class logins
+        if (path.endsWith("/accounts")) {                              
             synchronized (SchedulingEngine.LOCK) {
                 try (Connection c = DBUtil.getConnection()) {
                     c.setAutoCommit(false);
@@ -77,7 +72,7 @@ public class ImportServlet extends ApiServlet {
         if (!commit) {
             try (Connection c = DBUtil.getConnection()) { return TimetableImporter.preview(c, parsed, o); }
         }
-        synchronized (SchedulingEngine.LOCK) {                       // never import while a timetable is being generated
+        synchronized (SchedulingEngine.LOCK) {                       
             try (Connection c = DBUtil.getConnection()) {
                 c.setAutoCommit(false);
                 try {
@@ -93,7 +88,7 @@ public class ImportServlet extends ApiServlet {
         }
     }
 
-    /** Downloads a web page (http/https only, 6 MB max, 20 s). */
+    
     private static String fetch(String address) throws Exception {
         URL url = new URL(address.trim());
         if (!url.getProtocol().equals("http") && !url.getProtocol().equals("https")) throw new ApiException(400, "Only http:// and https:// addresses can be imported.");
