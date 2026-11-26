@@ -8,12 +8,7 @@ import javax.servlet.annotation.WebServlet;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
-/**
- *  GET  /api/exams?courseId=&year=&sectionId=      exam timetable (+ halls; for a section: exactly where it sits)
- *  GET  /api/exams/seating?examId=                 hall-wise seating chart
- *  POST /api/exams/generate  {courseId, year, startDate}
- *  DELETE /api/exams?courseId=&year=               clear a course-year's exams
- */
+
 @WebServlet({"/api/exams", "/api/exams/*"})
 public class ExamServlet extends ApiServlet {
     private final ExamService svc = new ExamService();
