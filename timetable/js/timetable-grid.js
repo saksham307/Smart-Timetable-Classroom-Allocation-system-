@@ -1,11 +1,6 @@
 const GRID_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/**
- * Draws the weekly grid (days across, periods down, fixed break rows in between).
- *  timeslots : /api/timeslots   entries : /api/timetable rows
- *  opts: { onRemove(entryId), onCellClick(slot, entry|null), showSection, flags:{entryId:'text'},
- *          off:Set(slotIds shown as unavailable), mineFacultyId, emptyDash }
- */
+
 function renderTimetableGrid(container, timeslots, entries, opts) {
   opts = opts || {};
   const rowsByTime = new Map();
