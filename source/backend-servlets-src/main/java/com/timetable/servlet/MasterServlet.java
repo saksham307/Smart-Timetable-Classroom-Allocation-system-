@@ -6,16 +6,12 @@ import com.timetable.util.Db;
 import javax.servlet.annotation.WebServlet;
 import java.util.*;
 
-/**
- * One servlet serving four master-data tables with full CRUD:
- *   /api/rooms  /api/faculty  /api/courses  /api/sections
- * Each resource is described once in RES (table, select, writable columns, filters).
- */
+
 @WebServlet({"/api/rooms", "/api/rooms/*", "/api/faculty", "/api/faculty/*",
              "/api/courses", "/api/courses/*", "/api/sections", "/api/sections/*"})
 public class MasterServlet extends ApiServlet {
 
-    /** json key, SQL column, type: s = text, i = integer, ni = nullable integer */
+    
     private static class F {
         final String key, col, type;
         F(String key, String col, String type) { this.key = key; this.col = col; this.type = type; }
@@ -24,7 +20,7 @@ public class MasterServlet extends ApiServlet {
     private static class Res {
         String table, select, orderBy;
         F[] fields;
-        String[][] filters = {};          // {query param, column}
+        String[][] filters = {};          
         Res(String table, String select, String orderBy, F... fields) {
             this.table = table; this.select = select; this.orderBy = orderBy; this.fields = fields;
         }
