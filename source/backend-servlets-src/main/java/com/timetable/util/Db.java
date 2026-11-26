@@ -3,7 +3,7 @@ package com.timetable.util;
 import java.sql.*;
 import java.util.*;
 
-/** Thin helper around JDBC PreparedStatement. Column aliases in the SQL become JSON keys. */
+
 public class Db {
 
     public static List<Map<String, Object>> query(String sql, Object... p) throws SQLException {
@@ -31,7 +31,7 @@ public class Db {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    /** INSERT and return the generated key. */
+    
     public static long insert(Connection c, String sql, Object... p) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bind(ps, p);
@@ -86,7 +86,7 @@ public class Db {
         return out;
     }
 
-    // ---- small conversion helpers used all over the project ----
+    
     public static int i(Object o) { return o == null ? 0 : ((Number) o).intValue(); }
 
     public static boolean b(Object o) {
