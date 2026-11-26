@@ -11,15 +11,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.*;
 
-/**
- * Exam timetable + seating arrangement.
- *
- *  Timetable : one exam per day for a course-year (no clashes for a student), weekends skipped.
- *              Theory papers 10:00-13:00, practical exams 14:00-17:00.
- *  Seating   : students of all sections of that course-year are INTERLEAVED (A1, B1, A2, B2 ...)
- *              and poured into halls in order, so two neighbours are never from the same section.
- *              A hall can host only one exam at the same date/time (mutual exclusion again).
- */
+
 public class ExamService {
 
     public Map<String, Object> generate(int courseId, int year, LocalDate start) throws SQLException {
@@ -36,7 +28,7 @@ public class ExamService {
                     if (subjects.isEmpty()) throw new ApiException(400, "This course/year has no subjects yet.");
                     if (sections.isEmpty()) throw new ApiException(400, "This course/year has no sections yet.");
 
-                    Db.update(c, "DELETE FROM exam WHERE course_id = ? AND `year` = ?", courseId, year);   // seats cascade
+                    Db.update(c, "DELETE FROM exam WHERE course_id = ? AND `year` = ?", courseId, year);   
 
                     List<Map<String, Object>> rooms = Db.query(c,
                             "SELECT id, name, capacity FROM room ORDER BY FIELD(type,'Lecture','Lab'), capacity DESC, id");
@@ -80,16 +72,16 @@ public class ExamService {
         }
     }
 
-    /** returns how many students could not be seated */
+    
     private int seat(Connection c, int examId, LocalDate date, String st, String et,
                      List<Map<String, Object>> sections, List<Map<String, Object>> rooms) throws SQLException {
-        // halls already used by another exam overlapping this date/time
+        
         Set<Integer> busy = new HashSet<>();
         for (Map<String, Object> r : Db.query(c, "SELECT DISTINCT es.room_id AS rid FROM exam_seat es JOIN exam e ON e.id = es.exam_id " +
                 "WHERE e.exam_date = ? AND e.start_time < ? AND e.end_time > ? AND e.id <> ?", java.sql.Date.valueOf(date), et, st, examId))
             busy.add(Db.i(r.get("rid")));
 
-        // students, interleaved across sections
+        
         List<Deque<String[]>> queues = new ArrayList<>();
         for (Map<String, Object> s : sections) {
             Deque<String[]> q = new ArrayDeque<>();
@@ -126,7 +118,7 @@ public class ExamService {
         return students.size() - next;
     }
 
-    // ---------------------------------------------------------------- reading
+    
     public List<Map<String, Object>> list(Integer courseId, Integer year, Integer sectionId) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT e.id AS id, e.exam_date AS examDate, DAYNAME(e.exam_date) AS weekday, " +
                 "TIME_FORMAT(e.start_time,'%H:%i') AS startTime, TIME_FORMAT(e.end_time,'%H:%i') AS endTime, s.name AS subject, s.is_lab AS isLab, " +
@@ -139,7 +131,7 @@ public class ExamService {
         sql.append(" ORDER BY e.course_id, e.`year`, e.exam_date, e.start_time");
         List<Map<String, Object>> rows = Db.query(sql.toString(), p.toArray());
 
-        // halls per exam (and, for a student's section, exactly where they sit)
+        
         Map<Integer, List<String>> halls = new HashMap<>();
         String hallSql = "SELECT es.exam_id AS eid, r.name AS room, MIN(es.seat_no) AS mn, MAX(es.seat_no) AS mx, COUNT(*) AS cnt " +
                 "FROM exam_seat es JOIN room r ON r.id = es.room_id " + (sectionId != null ? "WHERE es.section_id = ? " : "") +
