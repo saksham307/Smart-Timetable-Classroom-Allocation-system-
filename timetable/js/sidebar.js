@@ -54,7 +54,6 @@ function initials(name) {
   return String(name).replace(/\(.*?\)/g, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "U";
 }
 
-/** Draws the sidebar for the signed-in user. activeKey = the nav item to highlight. */
 function renderSidebar(user, activeKey) {
   const roleLabel = { admin: "Administrator", faculty: "Faculty", student: "Student" }[user.role];
   const links = NAV[user.role].map((it) => {
