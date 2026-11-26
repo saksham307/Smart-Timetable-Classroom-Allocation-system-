@@ -6,7 +6,7 @@ import com.timetable.util.Db;
 import javax.servlet.annotation.WebServlet;
 import java.util.*;
 
-/** Notice board. System events (timetable generated, substitution, exam schedule ...) post here automatically. */
+
 @WebServlet({"/api/notices", "/api/notices/*"})
 public class NoticeServlet extends ApiServlet {
 
