@@ -4,9 +4,5 @@
          xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
          version="4.0">
     <display-name>Timetable and Classroom Allocation System</display-name>
-    <!--
-      Every servlet/filter below is registered with @WebServlet / @WebFilter
-      annotations directly on the Java classes, not here. Tomcat scans for
-      them automatically as long as this file's version is 3.0+ (it is).
-    -->
+   
 </web-app>
