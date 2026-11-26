@@ -1,12 +1,4 @@
-/**
- * Reusable master-data table with Add / Edit / Remove.
- *   CrudTable({ container, resource:'/sections', query: () => '?courseId=1',
- *               columns:[{label, key | render:(row)=>html}],
- *               fields:[{key,label,type:'text|number|select|multiselect', options:[{value,label}],
- *                        default, help, min, max, required, showIf:(values)=>bool, rowKey}],
- *               removeLabel:(row)=>text, onChange:()=>{} })
- * returns { reload(), setOptions(key, options) }
- */
+
 function CrudTable(o) {
   const el = o.container;
   let rows = [];
