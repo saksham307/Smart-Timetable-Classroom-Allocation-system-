@@ -9,7 +9,7 @@ function homeFor(role) {
 }
 
 async function logout() {
-  try { await Api.post("/logout", {}); } catch (e) { /* ignore */ }
+  try { await Api.post("/logout", {}); } catch (e) { }
   sessionStorage.removeItem("user");
   window.location.href = "index.html";
 }
