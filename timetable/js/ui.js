@@ -52,7 +52,6 @@ function barRows(rows, labelKey, valueKey, max, cls, fmt) {
   }).join("");
 }
 
-/** next calendar date (yyyy-mm-dd) that falls on the given weekday abbreviation (Mon..Fri), today included */
 function nextDateFor(day) {
   const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const d = new Date();
