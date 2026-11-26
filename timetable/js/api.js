@@ -1,5 +1,4 @@
-// All pages are served by the same Tomcat app as the REST API, so a relative path works (no CORS).
-// The login creates a server-side session (cookie); a 401 anywhere sends the user back to the login page.
+
 const API_BASE = "/timetable/api";
 
 async function apiRequest(path, options = {}) {
