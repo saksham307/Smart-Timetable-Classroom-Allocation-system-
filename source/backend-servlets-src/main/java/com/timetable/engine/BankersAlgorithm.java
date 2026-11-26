@@ -2,23 +2,7 @@ package com.timetable.engine;
 
 import java.util.*;
 
-/**
- * Banker's Algorithm (Silberschatz, Operating System Concepts, ch. "Deadlocks").
- *
- *   Available[j]      free instances of resource type j
- *   Max[i][j]         most process i may ever claim of type j
- *   Allocation[i][j]  what process i currently holds
- *   Need[i][j]        Max - Allocation
- *
- * Safety algorithm : find an order of processes that can all finish.
- * Resource-request : pretend to grant a request, then run the safety algorithm;
- *                    grant only if the resulting state is SAFE.
- *
- * releaseOnFinish = true   textbook version: a finished process gives its allocation back.
- * releaseOnFinish = false  timetable version: a booked room/faculty period is never handed
- *                          back inside the planning cycle, so "finishing" CONSUMES the
- *                          remaining Need instead of releasing the Allocation.
- */
+
 public class BankersAlgorithm {
 
     public static class SafetyResult {
@@ -68,7 +52,7 @@ public class BankersAlgorithm {
         return true;
     }
 
-    /** Safety algorithm. */
+    
     public SafetyResult isSafe() {
         SafetyResult res = new SafetyResult();
         int[][] need = need();
@@ -97,7 +81,7 @@ public class BankersAlgorithm {
         return res;
     }
 
-    /** Resource-request algorithm. If granted, this object's state is updated. */
+    
     public RequestResult request(int p, int[] req) {
         RequestResult out = new RequestResult();
         int[] need = need()[p];
@@ -111,7 +95,7 @@ public class BankersAlgorithm {
             out.reason = "Resources are not available right now; P" + p + " must wait.";
             return out;
         }
-        for (int j = 0; j < m; j++) {            // pretend to allocate
+        for (int j = 0; j < m; j++) {            
             available[j] -= req[j];
             alloc[p][j] += req[j];
         }
@@ -120,7 +104,7 @@ public class BankersAlgorithm {
             out.granted = true;
             out.reason = "Granting leaves the system in a SAFE state.";
         } else {
-            for (int j = 0; j < m; j++) {        // roll back
+            for (int j = 0; j < m; j++) {        
                 available[j] += req[j];
                 alloc[p][j] -= req[j];
             }
