@@ -10,13 +10,7 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Map;
 
-/**
- * "User authentication & authorization" box of the architecture diagram.
- *  - every /api call except login needs a signed-in session
- *  - anything that changes data (POST/PUT/DELETE) needs the admin role
- *    (exception: faculty may update their OWN availability)
- *  - analytics / OS lab / tests are admin-only even for reading
- */
+
 @WebFilter("/api/*")
 public class AuthFilter implements Filter {
 
