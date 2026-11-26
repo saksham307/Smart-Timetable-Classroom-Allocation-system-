@@ -2,13 +2,7 @@ package com.timetable.engine;
 
 import java.util.*;
 
-/**
- * Deadlock detection on a wait-for graph (a resource-allocation graph with the resource
- * nodes collapsed): an edge A -> B means "A is waiting for something B holds".
- * A deadlock exists exactly when the graph contains a cycle. We find every strongly
- * connected component with Tarjan's algorithm; any component with more than one node
- * (or a self-loop) is a set of mutually waiting processes.
- */
+
 public class GraphUtil {
 
     public static List<List<Integer>> deadlockedSets(Map<Integer, List<Integer>> adj) {
@@ -59,7 +53,7 @@ public class GraphUtil {
         }
     }
 
-    /** One concrete cycle inside a strongly connected component, for display: [a, b, c, a]. */
+    
     public static List<Integer> sampleCycle(Map<Integer, List<Integer>> adj, List<Integer> component) {
         Set<Integer> comp = new HashSet<>(component);
         int start = component.get(0);
