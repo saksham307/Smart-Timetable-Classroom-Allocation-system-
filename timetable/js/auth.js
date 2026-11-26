@@ -14,7 +14,6 @@ async function logout() {
   window.location.href = "index.html";
 }
 
-/** Protects a page. role = "admin" | "faculty" | "student" | "any". Returns the user, or null after redirecting. */
 function requireRole(role) {
   const user = getUser();
   if (!user) { window.location.href = "index.html"; return null; }
