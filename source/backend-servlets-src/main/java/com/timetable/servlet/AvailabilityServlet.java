@@ -6,12 +6,7 @@ import com.timetable.util.Db;
 import javax.servlet.annotation.WebServlet;
 import java.util.*;
 
-/**
- * Faculty availability ("Set availability" in the architecture diagram).
- * A period marked unavailable is never used by the generator or by manual booking.
- *  GET  /api/availability?facultyId=
- *  POST /api/availability {facultyId, timeslotId, unavailable}
- */
+
 @WebServlet("/api/availability")
 public class AvailabilityServlet extends ApiServlet {
 
