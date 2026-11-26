@@ -8,12 +8,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.*;
 
-/**
- * Every REST endpoint extends this. Subclasses override get/post/put/delete and
- * simply RETURN the object to send as JSON (or throw ApiException for an error).
- * That keeps each servlet short and the error format identical everywhere:
- *    { "error": "message", ...optional extra fields }
- */
+
 public abstract class ApiServlet extends HttpServlet {
 
     public static class ApiException extends RuntimeException {
@@ -31,7 +26,7 @@ public abstract class ApiServlet extends HttpServlet {
         }
     }
 
-    /** Wrapper around the HTTP request with typed accessors for JSON body / query params. */
+    
     public static class Req {
         public final HttpServletRequest raw;
         public int status = 200;
