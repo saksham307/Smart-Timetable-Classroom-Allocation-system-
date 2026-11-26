@@ -6,12 +6,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
 
-/**
- * Creates the logins that make the Faculty and Student pages work for imported data:
- *  - one teacher login per faculty member (linked by faculty_id, so no exact-name matching is needed),
- *  - one class login per section (linked by section_id) that shows that section's timetable.
- * Idempotent: only teachers / sections that do not have a login yet get one.
- */
+
 public final class AccountService {
     private AccountService() {}
 
@@ -45,7 +40,7 @@ public final class AccountService {
         return out;
     }
 
-    /** All teacher and class logins (admin page / CSV download). */
+    
     public static List<Map<String, Object>> list(Connection c) throws SQLException {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> u : Db.query(c, "SELECT u.id, u.name, u.role, u.password, s.name AS section FROM users u LEFT JOIN section s ON s.id = u.section_id " +
@@ -61,7 +56,7 @@ public final class AccountService {
         return m;
     }
 
-    /** "Dr. Vikash Tripathi" -> "vikash.tripathi" */
+    
     static String teacherLogin(String name) {
         String n = name.replaceAll("^(?i)(dr|mr|ms|mrs|prof)[.]?[ ]*", "").toLowerCase().replaceAll("[^a-z ]", " ").trim();
         String[] p = n.split("\\s+");
@@ -70,7 +65,7 @@ public final class AccountService {
         return id.length() > 18 ? id.substring(0, 18) : id;
     }
 
-    /** "5-AI-DS1" -> "5-ai-ds1" */
+    
     static String sectionLogin(String section) {
         String id = section.toLowerCase().replaceAll("[^a-z0-9-]", "");
         if (id.isEmpty()) id = "class";
