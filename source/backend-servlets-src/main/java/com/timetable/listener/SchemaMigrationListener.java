@@ -4,7 +4,7 @@ import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
 
-/** Starts the schema check/upgrade when Tomcat loads the app, so no SQL has to be run by hand. */
+
 @WebListener
 public class SchemaMigrationListener implements ServletContextListener {
     @Override
