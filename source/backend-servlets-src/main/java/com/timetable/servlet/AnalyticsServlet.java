@@ -7,7 +7,7 @@ import com.timetable.util.Db;
 import javax.servlet.annotation.WebServlet;
 import java.util.*;
 
-/** /api/analytics - everything the dashboard needs in one call. */
+
 @WebServlet("/api/analytics")
 public class AnalyticsServlet extends ApiServlet {
 
